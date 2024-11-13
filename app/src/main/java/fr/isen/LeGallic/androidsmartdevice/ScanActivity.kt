@@ -3,11 +3,15 @@ package fr.isen.LeGallic.androidsmartdevice
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.isen.LeGallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
@@ -42,7 +45,7 @@ class ScanActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Vérifie les permissions avant de lancer l'interface
+        // check perm avant de lancer interface
         checkBluetoothPermissions()
 
         setContent {
@@ -57,6 +60,52 @@ class ScanActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    public fun startBLEScan(onDeviceFound: (String, String) -> Unit) {
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        val scanSettings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+
+        val scanFilter = ScanFilter.Builder()
+            .build()
+
+        val filters = listOf(scanFilter)
+
+        val foundDevicesMac = mutableSetOf<String>()
+        val foundDevicesName = mutableSetOf<String>()
+
+        scanner?.startScan(filters, scanSettings, object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
+                val deviceName = result.device.name ?: "Inconnu"
+                val macAddress = result.device.address
+
+                // Vérifier si l'adresse MAC ou le nom sont déjà présents dans les sets
+                if (!foundDevicesMac.contains(macAddress) && !foundDevicesName.contains(deviceName)) {
+                    foundDevicesMac.add(macAddress)
+                    foundDevicesName.add(deviceName)
+
+                    // logs pour debug
+                    Log.d("ScanActivity", "Nom de l'appareil : $deviceName, Adresse MAC : $macAddress")
+
+                    onDeviceFound(deviceName, macAddress)
+                }
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                super.onScanFailed(errorCode)
+                Log.e("ScanActivity", "Scan échoué avec le code d'erreur: $errorCode")
+            }
+        })
+    }
+
+
+    @SuppressLint("MissingPermission")
+    public fun stopBLEScan() {
+        bluetoothAdapter?.bluetoothLeScanner?.stopScan(object : ScanCallback() {})
     }
 
     @SuppressLint("ObsoleteSdkInt")
@@ -116,17 +165,31 @@ class ScanActivity : ComponentActivity() {
 @Composable
 fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-
     var bluetoothEnabled by remember { mutableStateOf(bluetoothAdapter?.isEnabled == true) }
     var isScanning by remember { mutableStateOf(false) }
     var imageResource by remember { mutableIntStateOf(R.drawable.recherche) }
     var progressVisibility by remember { mutableStateOf(false) }
+    val devices = remember { mutableStateListOf<Pair<String, String>>() }
 
-    val devices = listOf(
-        "Appareil1" to "00:14:22:01:23:45",
-        "Appareil2" to "00:14:22:01:23:46",
-        "Appareil3" to "00:14:22:01:23:47"
-    )
+    val startScan: () -> Unit = {
+        devices.clear() // Clear la list
+        isScanning = true
+        imageResource = R.drawable.stop
+        progressVisibility = true
+        (context as? ScanActivity)?.startBLEScan { name, mac ->
+            // verifier si l'adresse MAC ou le nom sont deja présents dans la liste avant d'ajouter
+            if (devices.none { it.second == mac || it.first == name }) {
+                devices.add(name to mac)
+            }
+        }
+    }
+
+    val stopScan: () -> Unit = {
+        isScanning = false
+        imageResource = R.drawable.recherche
+        progressVisibility = false
+        (context as? ScanActivity)?.stopBLEScan()
+    }
 
     Box(
         modifier = modifier
@@ -168,15 +231,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                     modifier = Modifier
                         .size(128.dp)
                         .clickable {
-                            if (isScanning) {
-                                isScanning = false
-                                imageResource = R.drawable.recherche
-                                progressVisibility = false
-                            } else {
-                                isScanning = true
-                                imageResource = R.drawable.stop
-                                progressVisibility = true
-                            }
+                            if (isScanning) stopScan() else startScan()
                         }
                 )
 
@@ -203,7 +258,9 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                     Spacer(modifier = Modifier.height(16.dp))
 
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                     ) {
                         items(devices) { device ->
                             val (deviceName, macAddress) = device
