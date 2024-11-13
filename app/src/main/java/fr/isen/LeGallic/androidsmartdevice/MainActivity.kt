@@ -71,7 +71,12 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(30.dp))
 
             Text(
-                text = "Ici vous pouvez scanner les appareils BLE alentours",
+                text = "Ici vous pouvez scanner les appareils ",
+                color = Color.White,
+                fontSize = 20.sp
+            )
+            Text(
+                text = "BLE alentours",
                 color = Color.White,
                 fontSize = 20.sp
             )

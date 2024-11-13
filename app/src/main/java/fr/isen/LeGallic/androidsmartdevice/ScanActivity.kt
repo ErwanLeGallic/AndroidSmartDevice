@@ -62,11 +62,11 @@ class ScanActivity : ComponentActivity() {
     @SuppressLint("ObsoleteSdkInt")
     private fun checkBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Vérifier si les permissions Bluetooth sont accordées
+            // check bluetooth perm
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
                 checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
             ) {
-                // Demande les permissions si elles ne sont pas accordées
+                // ask bluetooth perm
                 requestPermissions(
                     arrayOf(
                         Manifest.permission.BLUETOOTH_SCAN,
