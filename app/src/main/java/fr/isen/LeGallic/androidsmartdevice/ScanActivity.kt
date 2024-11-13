@@ -1,6 +1,7 @@
 package fr.isen.LeGallic.androidsmartdevice
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
@@ -40,7 +41,10 @@ class ScanActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        checkBluetoothPermissions() // Vérification des permissions Bluetooth au démarrage
+
+        // Vérifie les permissions avant de lancer l'interface
+        checkBluetoothPermissions()
+
         setContent {
             AndroidSmartDeviceTheme {
                 Scaffold(
@@ -55,6 +59,7 @@ class ScanActivity : ComponentActivity() {
         }
     }
 
+    @SuppressLint("ObsoleteSdkInt")
     private fun checkBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Vérifier si les permissions Bluetooth sont accordées
@@ -71,7 +76,6 @@ class ScanActivity : ComponentActivity() {
                 )
             }
         } else {
-            // Pour les versions antérieures, vérifie uniquement la localisation
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
             }
@@ -115,7 +119,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
 
     var bluetoothEnabled by remember { mutableStateOf(bluetoothAdapter?.isEnabled == true) }
     var isScanning by remember { mutableStateOf(false) }
-    var imageResource by remember { mutableStateOf(R.drawable.recherche) }
+    var imageResource by remember { mutableIntStateOf(R.drawable.recherche) }
     var progressVisibility by remember { mutableStateOf(false) }
 
     val devices = listOf(
@@ -178,7 +182,9 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
 
                 if (progressVisibility) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(50.dp),
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .size(50.dp),
                         color = Color.White,
                         strokeWidth = 4.dp
                     )
