@@ -1,4 +1,4 @@
-package fr.isen.LeGallic.androidsmartdevice
+package fr.isen.legallic.androidsmartdevice
 
 import org.junit.Test
 

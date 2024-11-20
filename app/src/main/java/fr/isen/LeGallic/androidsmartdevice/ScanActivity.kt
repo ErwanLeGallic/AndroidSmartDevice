@@ -1,4 +1,4 @@
-package fr.isen.LeGallic.androidsmartdevice
+package fr.isen.legallic.androidsmartdevice
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -35,7 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.isen.LeGallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
+import fr.isen.legallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
 
 class ScanActivity : ComponentActivity() {
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -217,7 +217,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
             if (!bluetoothEnabled) {
                 Text(
                     text = "Bluetooth désactivé. Veuillez l'activer.",
-                    color = Color.Yellow,
+                    color = Color.Red,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )

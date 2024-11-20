@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="fr.isen.LeGallic.androidsmartdevice">
+    package="fr.isen.legallic.androidsmartdevice">
 
     <!-- Permissions Bluetooth pour Android 12 (API 31) et plus -->
     <uses-permission android:name="android.permission.BLUETOOTH" />

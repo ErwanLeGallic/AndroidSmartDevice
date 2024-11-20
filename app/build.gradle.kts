@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "fr.isen.LeGallic.androidsmartdevice"
+    namespace = "fr.isen.legallic.androidsmartdevice"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "fr.isen.LeGallic.androidsmartdevice"
+        applicationId = "fr.isen.legallic.androidsmartdevice"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

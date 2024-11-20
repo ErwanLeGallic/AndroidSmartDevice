@@ -1,4 +1,4 @@
-package fr.isen.LeGallic.androidsmartdevice
+package fr.isen.legallic.androidsmartdevice
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -6,65 +6,56 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattService
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
+import androidx.compose.foundation.background
 import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import fr.isen.LeGallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
-import java.util.*
+import fr.isen.legallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
+import java.util.UUID
 
 class DeviceInfoActivity : ComponentActivity() {
     private var bluetoothGatt: BluetoothGatt? = null
     private var bluetoothDevice: BluetoothDevice? = null
-    private val REQUEST_PERMISSION_CODE = 1
 
-    // UUID du service et de la caractéristique à utiliser
-    private val BATTERY_SERVICE_UUID = UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb")
-    private val BATTERY_LEVEL_CHARACTERISTIC_UUID = UUID.fromString("00002A19-0000-1000-8000-00805f9b34fb")
+    private var ledServiceUUID: UUID? = null
+    private var ledControlCharacteristicUUID: UUID? = null
+    private var servicesDiscovered = false
 
+    private val ledStates = mutableStateMapOf(1 to false, 2 to false, 3 to false)
+
+    private var isConnected = mutableStateOf(false)
+
+    @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // on recp les donees du device selected
         val deviceName = intent.getStringExtra("deviceName") ?: "Inconnu"
         val macAddress = intent.getStringExtra("macAddress") ?: "Inconnu"
 
         val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-        //recup le périphérique BLE via MAC
         bluetoothDevice = bluetoothAdapter?.getRemoteDevice(macAddress)
 
-        // check perm
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        connectToDevice()
 
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(android.Manifest.permission.BLUETOOTH_CONNECT, android.Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_PERMISSION_CODE
-            )
-        } else {
-            connectToDevice()
-        }
-        //gui
         setContent {
             AndroidSmartDeviceTheme {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(Color(169, 169, 169))
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -88,64 +79,163 @@ class DeviceInfoActivity : ComponentActivity() {
                         color = Color.White,
                         fontSize = 20.sp
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = if (isConnected.value) "État : Connecté" else "État : Déconnecté",
+                        color = if (isConnected.value) Color.Green else Color.Red,
+                        fontSize = 18.sp
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Bouton pour se co
-                    Button(
-                        onClick = { connectToDevice() },
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Text(text = "Se connecter à l'appareil")
+                        LEDButton(ledNumber = 1)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        LEDButton(ledNumber = 2)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        LEDButton(ledNumber = 3)
                     }
                 }
             }
         }
     }
 
-    // Fonction pour se co
+    @Composable
+    fun LEDButton(ledNumber: Int) {
+        val ledState = ledStates[ledNumber] ?: false
+        val imageRes = if (ledState) R.drawable.led_on else R.drawable.led_off
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = "LED $ledNumber",
+            modifier = Modifier
+                .size(50.dp)
+                .clickable {
+                    toggleLED(ledNumber)
+                }
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun sendLEDCommand(value: Int, callback: (Boolean) -> Unit) {
+        // Vérification si le service 3 (index 2) et la caractéristique existent
+        val service = bluetoothGatt?.services?.getOrNull(2)  // Service à l'index 2
+        if (service == null) {
+            Log.e("DeviceInfoActivity", "Service à l'index 2 introuvable")
+            Toast.makeText(this, "Service introuvable", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        // Vérification de la caractéristique à l'index 0 du service
+        val characteristic =
+            service.characteristics.getOrNull(0)
+        if (characteristic == null) {
+            Log.e("DeviceInfoActivity", "Caractéristique à l'index 0 introuvable dans le service")
+            Toast.makeText(this, "Caractéristique introuvable", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        // Vérifier si la caractéristique supporte l'écriture
+       /* if ((characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE) == 0) {
+            Log.e("DeviceInfoActivity", "La caractéristique ne supporte pas l'écriture")
+            Toast.makeText(
+                this,
+                "La caractéristique ne supporte pas l'écriture",
+                Toast.LENGTH_SHORT
+            ).show()
+            callback(false)
+            return
+        }*/
+
+        characteristic.value = byteArrayOf(value.toByte())
+
+        val success = bluetoothGatt?.writeCharacteristic(characteristic) ?: false
+        if (success) {
+            Log.d("DeviceInfoActivity", "Commande LED envoyée avec succès : $value")
+        } else {
+            Log.e("DeviceInfoActivity", "Échec de l'envoi de la commande LED")
+        }
+
+        callback(success)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun toggleLED(ledNumber: Int) {
+        if (!servicesDiscovered) {
+            Log.e("DeviceInfoActivity", "Les services n'ont pas encore été découverts.")
+            Toast.makeText(
+                this,
+                "Les services n'ont pas encore été découverts.",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val ledState = ledStates[ledNumber] ?: false
+        val newLedState = !ledState
+        ledStates[ledNumber] = newLedState
+
+        // Envoi de la commande BLE avec la bonne valeur pour chaque LED
+        val commandValue = when (ledNumber) {
+            1 -> if (newLedState) 0x01 else 0x00  // LED 1 : 0x01 pour allumer, 0x00 pour éteindre
+            2 -> if (newLedState) 0x02 else 0x00  // LED 2 : 0x02
+            3 -> if (newLedState) 0x03 else 0x00  // LED 3 : 0x03
+            else -> 0x00  // Cas par défaut
+        }
+
+        // Envoi de la commande via BLE
+        sendLEDCommand(commandValue) { success ->
+            if (success) {
+                Log.d("DeviceInfoActivity", "Commande envoyée avec succès : $commandValue")
+            } else {
+                Toast.makeText(this, "Erreur lors de l'envoi de la commande", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private fun connectToDevice() {
         bluetoothGatt = bluetoothDevice?.connectGatt(this, false, bluetoothGattCallback)
-        Log.d("DeviceInfoActivity", "Tentative de connexion à l'appareil BLE : ${bluetoothDevice?.address}")
+        Log.d(
+            "DeviceInfoActivity",
+            "Tentative de connexion à l'appareil BLE : ${bluetoothDevice?.address}"
+        )
     }
 
-    // Callback pour gérer les réponses de la connexion BLE
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-            super.onConnectionStateChange(gatt, status, newState)
-            when (newState) {
-                BluetoothGatt.STATE_CONNECTED -> {
-                    Log.d("DeviceInfoActivity", "Connecté à l'appareil BLE.")
-                    gatt?.discoverServices()
-                }
-                BluetoothGatt.STATE_DISCONNECTED -> {
-                    Log.d("DeviceInfoActivity", "Déconnecté de l'appareil BLE.")
-                }
-                else -> {
-                    Log.d("DeviceInfoActivity", "Changement d'état de connexion : $newState")
-                }
+            if (newState == BluetoothGatt.STATE_CONNECTED) {
+                isConnected.value = true
+                gatt?.discoverServices()
+            } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+                isConnected.value = false
+                bluetoothGatt = null
             }
         }
 
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            super.onServicesDiscovered(gatt, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d("DeviceInfoActivity", "Services découverts sur l'appareil BLE.")
-                val service: BluetoothGattService? = gatt?.getService(BATTERY_SERVICE_UUID)
-                val characteristic: BluetoothGattCharacteristic? = service?.getCharacteristic(BATTERY_LEVEL_CHARACTERISTIC_UUID)
-                gatt?.readCharacteristic(characteristic)
-            } else {
-                Log.d("DeviceInfoActivity", "Échec de la découverte des services.")
-            }
-        }
-
-        override fun onCharacteristicRead(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?, status: Int) {
-            super.onCharacteristicRead(gatt, characteristic, status)
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d("DeviceInfoActivity", "Caractéristique lue avec succès : ${characteristic?.value}")
-                // Traitez la donnée lue
+                servicesDiscovered = true
+                gatt?.services?.forEachIndexed { index, service ->
+                    // Log des services trouvés
+                    Log.d("DeviceInfoActivity", "Service trouvé à l'index $index : ${service.uuid}")
+                    if (index == 2) {  // Service 3 (index 2)
+                        service.characteristics.forEachIndexed { charIndex, characteristic ->
+                            // Log des caractéristiques
+                            Log.d(
+                                "DeviceInfoActivity",
+                                "Caractéristique trouvée à l'index $charIndex : ${characteristic.uuid}"
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -154,6 +244,5 @@ class DeviceInfoActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         bluetoothGatt?.close()
-        Log.d("DeviceInfoActivity", "Connexion fermée.")
     }
 }

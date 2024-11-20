@@ -1,4 +1,4 @@
-package fr.isen.LeGallic.androidsmartdevice
+package fr.isen.legallic.androidsmartdevice
 
 import android.content.Intent
 import android.os.Bundle
@@ -19,8 +19,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.isen.LeGallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
-import fr.isen.LeGallic.androidsmartdevice.R
+import fr.isen.legallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
+import fr.isen.legallic.androidsmartdevice.R
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
