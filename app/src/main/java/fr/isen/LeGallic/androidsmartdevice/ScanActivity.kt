@@ -7,7 +7,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.isen.LeGallic.androidsmartdevice.ui.theme.AndroidSmartDeviceTheme
-import fr.isen.LeGallic.androidsmartdevice.R
 
 class ScanActivity : ComponentActivity() {
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -264,7 +263,17 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                     ) {
                         items(devices) { device ->
                             val (deviceName, macAddress) = device
-                            Column(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val intent = Intent(context, DeviceInfoActivity::class.java).apply {
+                                            putExtra("deviceName", deviceName)
+                                            putExtra("macAddress", macAddress)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.fillMaxWidth()
