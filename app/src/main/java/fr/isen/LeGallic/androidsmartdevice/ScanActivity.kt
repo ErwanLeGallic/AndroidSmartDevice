@@ -82,7 +82,7 @@ class ScanActivity : ComponentActivity() {
                 val deviceName = result.device.name ?: "Inconnu"
                 val macAddress = result.device.address
 
-                // Vérifier si l'adresse MAC ou le nom sont déjà présents dans les sets
+                // filtrage
                 if (!foundDevicesMac.contains(macAddress) && !foundDevicesName.contains(deviceName)) {
                     foundDevicesMac.add(macAddress)
                     foundDevicesName.add(deviceName)
@@ -171,14 +171,17 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
     val devices = remember { mutableStateListOf<Pair<String, String>>() }
 
     val startScan: () -> Unit = {
-        devices.clear() // Clear la list
+        devices.clear() // reset liste
         isScanning = true
         imageResource = R.drawable.stop
         progressVisibility = true
+        Log.d("BluetoothScan", "Scan démarré, attente de résultats...")
+
         (context as? ScanActivity)?.startBLEScan { name, mac ->
-            // verifier si l'adresse MAC ou le nom sont deja présents dans la liste avant d'ajouter
-            if (devices.none { it.second == mac || it.first == name }) {
+            // maj liste
+            if (devices.none { it.second == mac }) {
                 devices.add(name to mac)
+                Log.d("BluetoothScan", "Appareil trouvé : $name, $mac")
             }
         }
     }
@@ -188,8 +191,10 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
         imageResource = R.drawable.recherche
         progressVisibility = false
         (context as? ScanActivity)?.stopBLEScan()
+        Log.d("BluetoothScan", "Scan arrêté.")
     }
 
+    // gui
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -208,6 +213,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
 
             Spacer(modifier = Modifier.height(40.dp))
 
+            // Vérifier si Bluetooth est activé
             if (!bluetoothEnabled) {
                 Text(
                     text = "Bluetooth désactivé. Veuillez l'activer.",
@@ -234,6 +240,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                         }
                 )
 
+                // gif chargement
                 if (progressVisibility) {
                     CircularProgressIndicator(
                         modifier = Modifier
@@ -256,6 +263,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // print liste
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -267,10 +275,10 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        val intent = Intent(context, DeviceInfoActivity::class.java).apply {
-                                            putExtra("deviceName", deviceName)
-                                            putExtra("macAddress", macAddress)
-                                        }
+                                        // Naviguer vers DeviceInfoActivity avec les détails de l'appareil
+                                        val intent = Intent(context, DeviceInfoActivity::class.java)
+                                        intent.putExtra("deviceName", deviceName)
+                                        intent.putExtra("macAddress", macAddress)
                                         context.startActivity(intent)
                                     }
                             ) {
