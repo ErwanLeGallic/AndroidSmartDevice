@@ -28,13 +28,10 @@ import java.util.UUID
 class DeviceInfoActivity : ComponentActivity() {
     private var bluetoothGatt: BluetoothGatt? = null
     private var bluetoothDevice: BluetoothDevice? = null
-
     private var ledServiceUUID: UUID? = null
     private var ledControlCharacteristicUUID: UUID? = null
     private var servicesDiscovered = false
-
     private val ledStates = mutableStateMapOf(1 to false, 2 to false, 3 to false)
-
     private var isConnected = mutableStateOf(false)
 
     @SuppressLint("MissingPermission")
