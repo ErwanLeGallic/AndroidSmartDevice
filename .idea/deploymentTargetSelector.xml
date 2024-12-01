@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2024-12-01T17:26:16.654059Z">
+        <DropdownSelection timestamp="2024-12-01T20:06:25.548279900Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Acer Nitro RTX\.android\avd\Medium_Phone.avd" />
+              <DeviceId pluginId="Default" identifier="serial=169.254.240.102:5555;connection=92f213ca" />
             </handle>
           </Target>
         </DropdownSelection>
