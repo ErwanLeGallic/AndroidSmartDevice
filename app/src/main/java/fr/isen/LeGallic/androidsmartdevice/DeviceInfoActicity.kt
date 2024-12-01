@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -102,6 +101,7 @@ class DeviceInfoActivity : ComponentActivity() {
             }
         }
     }
+
 
     @Composable
     fun LEDButton(ledNumber: Int) {
