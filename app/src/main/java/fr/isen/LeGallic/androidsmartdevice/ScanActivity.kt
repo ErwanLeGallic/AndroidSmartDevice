@@ -44,8 +44,8 @@ class ScanActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // check perm avant de lancer interface
-        checkBluetoothPermissions()
+        // check perm avant de lancer l'interface
+        getAllPermissionsForBLE()
 
         setContent {
             AndroidSmartDeviceTheme {
@@ -61,18 +61,18 @@ class ScanActivity : ComponentActivity() {
         }
     }
 
+/*
+fct qui lance le scan BLE
+ */
     @SuppressLint("MissingPermission")
     public fun startBLEScan(onDeviceFound: (String, String) -> Unit) {
         val scanner = bluetoothAdapter?.bluetoothLeScanner
         val scanSettings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
-
         val scanFilter = ScanFilter.Builder()
             .build()
-
         val filters = listOf(scanFilter)
-
         val foundDevicesMac = mutableSetOf<String>()
         val foundDevicesName = mutableSetOf<String>()
 
@@ -82,53 +82,57 @@ class ScanActivity : ComponentActivity() {
                 val deviceName = result.device.name ?: "Inconnu"
                 val macAddress = result.device.address
 
-                // filtrage
+                // filtrage par mac et nom pour eviter d'avoir les 'appareils inconnus' pour ce pb le filtrage nom est suffisant
                 if (!foundDevicesMac.contains(macAddress) && !foundDevicesName.contains(deviceName)) {
                     foundDevicesMac.add(macAddress)
                     foundDevicesName.add(deviceName)
 
-                    // logs pour debug
+                    // logs pour debug depuis logcat
                     Log.d("ScanActivity", "Nom de l'appareil : $deviceName, Adresse MAC : $macAddress")
 
                     onDeviceFound(deviceName, macAddress)
                 }
             }
-
+            //log si fail
             override fun onScanFailed(errorCode: Int) {
                 super.onScanFailed(errorCode)
                 Log.e("ScanActivity", "Scan échoué avec le code d'erreur: $errorCode")
             }
         })
     }
-
-
+    /*
+    fct qui stop le scan BLE
+     */
     @SuppressLint("MissingPermission")
     public fun stopBLEScan() {
         bluetoothAdapter?.bluetoothLeScanner?.stopScan(object : ScanCallback() {})
     }
 
-    @SuppressLint("ObsoleteSdkInt")
-    private fun checkBluetoothPermissions() {
+    /*
+    fct qui va demander les permissions de localisation et d'utilisation bluetooth
+     */
+    private fun getAllPermissionsForBLE(): Array<String> {
+        var allPermissions = arrayOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.BLUETOOTH_ADMIN
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // check bluetooth perm
-            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
-            ) {
-                // ask bluetooth perm
-                requestPermissions(
-                    arrayOf(
-                        Manifest.permission.BLUETOOTH_SCAN,
-                        Manifest.permission.BLUETOOTH_CONNECT
-                    ),
-                    REQUEST_BLUETOOTH_PERMISSIONS
+            allPermissions = allPermissions.plus(
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_ADMIN
                 )
-            }
-        } else {
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
-            }
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            allPermissions = allPermissions.plus(
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            )
         }
+        return allPermissions
     }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -161,6 +165,9 @@ class ScanActivity : ComponentActivity() {
     }
 }
 
+/*
+mise en interface
+ */
 @Composable
 fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -194,7 +201,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
         Log.d("BluetoothScan", "Scan arrêté.")
     }
 
-    // gui
+    // partie js
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -213,7 +220,6 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Vérifier si Bluetooth est activé
             if (!bluetoothEnabled) {
                 Text(
                     text = "Bluetooth désactivé. Veuillez l'activer.",
@@ -275,7 +281,7 @@ fun BluetoothScannerUI(bluetoothAdapter: BluetoothAdapter?, modifier: Modifier =
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        // Naviguer vers DeviceInfoActivity avec les détails de l'appareil
+                                        // va vers DeviceInfoActivity avec les détails de l'appareil
                                         val intent = Intent(context, DeviceInfoActivity::class.java)
                                         intent.putExtra("deviceName", deviceName)
                                         intent.putExtra("macAddress", macAddress)
